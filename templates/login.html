@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UFDR - Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0a0f1e;
+            color: #e0e6ff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: #0d1428;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #1e3a8a;
+        }
+        .header h1 { font-size: 22px; color: #60a5fa; letter-spacing: 2px; }
+        .header p { color: #94a3b8; font-size: 12px; margin-top: 4px; }
+        .container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: #0d1428;
+            border: 1px solid #1e3a8a;
+            border-radius: 12px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #1e3a8a;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: #94a3b8;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: #60a5fa;
+            border-bottom: 2px solid #60a5fa;
+        }
+        .form { display: none; }
+        .form.active { display: block; }
+        .form h2 {
+            font-size: 18px;
+            color: #60a5fa;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .input-group { margin-bottom: 16px; }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background: #0a0f1e;
+            border: 1px solid #1e3a8a;
+            border-radius: 8px;
+            color: #e0e6ff;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .input-group input:focus { border-color: #60a5fa; }
+        .btn {
+            width: 100%;
+            padding: 13px;
+            background: #1e3a8a;
+            color: #e0e6ff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #2563eb; }
+        .msg {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: center;
+            display: none;
+        }
+        .msg.success { background: #052e16; color: #4ade80; display: block; }
+        .msg.error { background: #450a0a; color: #f87171; display: block; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 UFDR ANALYSIS TOOL</h1>
+        <p>Unified Forensic Data Report — AI Powered</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('login')">Login</div>
+                <div class="tab" onclick="switchTab('register')">Register</div>
+            </div>
+
+            <!-- Login Form -->
+            <div class="form active" id="loginForm">
+                <h2>Welcome Back</h2>
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" placeholder="Enter username">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password">
+                </div>
+                <button class="btn" onclick="doLogin()">🔐 Login</button>
+                <div class="msg" id="loginMsg"></div>
+            </div>
+
+            <!-- Register Form -->
+            <div class="form" id="registerForm">
+                <h2>Create Account</h2>
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="regUsername" placeholder="Choose username">
+                </div>
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail" placeholder="Enter email">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword" placeholder="Choose password">
+                </div>
+                <button class="btn" onclick="doRegister()">✅ Register</button>
+                <div class="msg" id="registerMsg"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
+            if (tab === 'login') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+        }
+
+        async function doLogin() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const msg = document.getElementById('loginMsg');
+
+            if (!username || !password) {
+                msg.className = 'msg error';
+                msg.textContent = 'Please fill all fields';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+
+            const res = await fetch('/login', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                msg.className = 'msg success';
+                msg.textContent = '✅ Login successful! Redirecting...';
+                setTimeout(() => window.location.href = '/dashboard', 1000);
+            } else {
+                msg.className = 'msg error';
+                msg.textContent = '❌ ' + data.message;
+            }
+        }
+
+        async function doRegister() {
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const msg = document.getElementById('registerMsg');
+
+            if (!username || !email || !password) {
+                msg.className = 'msg error';
+                msg.textContent = 'Please fill all fields';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('email', email);
+            formData.append('password', password);
+
+            const res = await fetch('/register', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                msg.className = 'msg success';
+                msg.textContent = '✅ Registered! Please login now.';
+                setTimeout(() => switchTab('login'), 1500);
+            } else {
+                msg.className = 'msg error';
+                msg.textContent = '❌ ' + data.message;
+            }
+        }
+    </script>
+<div style="text-align:center; padding: 20px; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border); margin-top: 10px;">
+        Developed by <span style="color: var(--accent); font-weight: 600;">Loahith</span> · Software Engineer
+    </div>
+</body>
+</html>
