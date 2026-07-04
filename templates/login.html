@@ -4,24 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UFDR - Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --ink: #15171b;
+            --panel: #1c1f24;
+            --panel-raised: #22262c;
+            --hairline: #3a3f47;
+            --text: #e9e6dc;
+            --text-dim: #8b8f96;
+            --seal: #b0272d;
+            --tag: #c98a2c;
+            --verified: #4f9d69;
+        }
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #0a0f1e;
-            color: #e0e6ff;
+            font-family: 'Inter', sans-serif;
+            background: var(--ink);
+            background-image:
+                repeating-linear-gradient(0deg, rgba(233,230,220,0.025) 0px, rgba(233,230,220,0.025) 1px, transparent 1px, transparent 3px);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
         .header {
-            background: #0d1428;
-            padding: 20px;
+            background: var(--panel);
+            padding: 22px 20px 18px;
             text-align: center;
-            border-bottom: 2px solid #1e3a8a;
+            border-bottom: 3px solid var(--tag);
+            position: relative;
         }
-        .header h1 { font-size: 22px; color: #60a5fa; letter-spacing: 2px; }
-        .header p { color: #94a3b8; font-size: 12px; margin-top: 4px; }
+        .header h1 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 21px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .header p {
+            color: var(--text-dim);
+            font-size: 11px;
+            margin-top: 5px;
+            font-family: 'IBM Plex Mono', monospace;
+            letter-spacing: 0.5px;
+        }
         .container {
             flex: 1;
             display: flex;
@@ -30,88 +59,120 @@
             padding: 20px;
         }
         .card {
-            background: #0d1428;
-            border: 1px solid #1e3a8a;
-            border-radius: 12px;
+            background: var(--panel);
+            border: 1px solid var(--hairline);
+            border-radius: 4px;
             padding: 28px 24px;
             width: 100%;
             max-width: 400px;
+            position: relative;
+        }
+        .card::before {
+            content: 'CASE FILE — RESTRICTED ACCESS';
+            position: absolute;
+            top: -10px;
+            left: 24px;
+            background: var(--tag);
+            color: #15171b;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            padding: 3px 8px;
+            border-radius: 2px;
         }
         .tabs {
             display: flex;
             margin-bottom: 24px;
-            border-bottom: 1px solid #1e3a8a;
+            border-bottom: 1px solid var(--hairline);
         }
         .tab {
             flex: 1;
             padding: 10px;
             text-align: center;
             cursor: pointer;
-            font-size: 14px;
-            color: #94a3b8;
+            font-size: 13px;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
             border-bottom: 2px solid transparent;
             transition: all 0.3s;
         }
         .tab.active {
-            color: #60a5fa;
-            border-bottom: 2px solid #60a5fa;
+            color: var(--tag);
+            border-bottom: 2px solid var(--tag);
         }
         .form { display: none; }
         .form.active { display: block; }
         .form h2 {
-            font-size: 18px;
-            color: #60a5fa;
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text);
             margin-bottom: 20px;
             text-align: center;
         }
         .input-group { margin-bottom: 16px; }
         .input-group label {
             display: block;
-            font-size: 12px;
-            color: #94a3b8;
+            font-size: 10.5px;
+            font-family: 'IBM Plex Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
             margin-bottom: 6px;
         }
         .input-group input {
             width: 100%;
             padding: 12px 14px;
-            background: #0a0f1e;
-            border: 1px solid #1e3a8a;
-            border-radius: 8px;
-            color: #e0e6ff;
-            font-size: 14px;
+            background: var(--ink);
+            border: 1px solid var(--hairline);
+            border-radius: 3px;
+            color: var(--text);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
             outline: none;
-            transition: border 0.3s;
+            transition: border 0.2s;
         }
-        .input-group input:focus { border-color: #60a5fa; }
+        .input-group input:focus { border-color: var(--tag); }
         .btn {
             width: 100%;
             padding: 13px;
-            background: #1e3a8a;
-            color: #e0e6ff;
+            background: var(--tag);
+            color: #15171b;
             border: none;
-            border-radius: 8px;
-            font-size: 15px;
+            border-radius: 3px;
+            font-family: 'Oswald', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
             cursor: pointer;
             margin-top: 8px;
-            transition: background 0.3s;
+            transition: filter 0.2s;
         }
-        .btn:hover { background: #2563eb; }
+        .btn:hover { filter: brightness(1.12); }
         .msg {
             margin-top: 12px;
             padding: 10px;
-            border-radius: 8px;
-            font-size: 13px;
+            border-radius: 3px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
             text-align: center;
             display: none;
+            border-left: 3px solid transparent;
         }
-        .msg.success { background: #052e16; color: #4ade80; display: block; }
-        .msg.error { background: #450a0a; color: #f87171; display: block; }
+        .msg.success { background: rgba(79,157,105,0.12); color: var(--verified); border-left-color: var(--verified); display: block; }
+        .msg.error { background: rgba(176,39,45,0.12); color: #e08a8d; border-left-color: var(--seal); display: block; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🔍 UFDR ANALYSIS TOOL</h1>
-        <p>Unified Forensic Data Report — AI Powered</p>
+        <h1>UFDR Analysis Tool</h1>
+        <p>Unified Forensic Data Report — Case Intake Terminal</p>
     </div>
 
     <div class="container">
@@ -132,7 +193,7 @@
                     <label>Password</label>
                     <input type="password" id="loginPassword" placeholder="Enter password">
                 </div>
-                <button class="btn" onclick="doLogin()">🔐 Login</button>
+                <button class="btn" onclick="doLogin()">Authenticate</button>
                 <div class="msg" id="loginMsg"></div>
             </div>
 
@@ -151,7 +212,7 @@
                     <label>Password</label>
                     <input type="password" id="regPassword" placeholder="Choose password">
                 </div>
-                <button class="btn" onclick="doRegister()">✅ Register</button>
+                <button class="btn" onclick="doRegister()">Open Case File</button>
                 <div class="msg" id="registerMsg"></div>
             </div>
         </div>
@@ -190,11 +251,11 @@
 
             if (data.status === 'success') {
                 msg.className = 'msg success';
-                msg.textContent = '✅ Login successful! Redirecting...';
+                msg.textContent = 'Identity verified — opening dashboard...';
                 setTimeout(() => window.location.href = '/dashboard', 1000);
             } else {
                 msg.className = 'msg error';
-                msg.textContent = '❌ ' + data.message;
+                msg.textContent = data.message;
             }
         }
 
@@ -220,16 +281,16 @@
 
             if (data.status === 'success') {
                 msg.className = 'msg success';
-                msg.textContent = '✅ Registered! Please login now.';
+                msg.textContent = 'Case file opened. Log in to continue.';
                 setTimeout(() => switchTab('login'), 1500);
             } else {
                 msg.className = 'msg error';
-                msg.textContent = '❌ ' + data.message;
+                msg.textContent = data.message;
             }
         }
     </script>
-<div style="text-align:center; padding: 20px; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border); margin-top: 10px;">
-        Developed by <span style="color: var(--accent); font-weight: 600;">Loahith</span> · Software Engineer
+<div style="text-align:center; padding: 18px; color: var(--text-dim); font-size: 11px; font-family: 'IBM Plex Mono', monospace; border-top: 1px solid var(--hairline); margin-top: 10px;">
+        Built by <span style="color: var(--tag); font-weight: 500;">Loahith</span> · Software Engineer
     </div>
 </body>
 </html>
