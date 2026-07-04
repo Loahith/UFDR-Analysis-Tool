@@ -246,10 +246,11 @@
             formData.append('username', username);
             formData.append('password', password);
 
-            const res = await fetch('/login', { method: 'POST', body: formData });
+            const res = await fetch('/login', { method: 'POST', body: formData, credentials: 'same-origin' });
             const data = await res.json();
 
             if (data.status === 'success') {
+                localStorage.setItem('ufdr_username', username);
                 msg.className = 'msg success';
                 msg.textContent = 'Identity verified — opening dashboard...';
                 setTimeout(() => window.location.href = '/dashboard', 1000);
