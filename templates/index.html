@@ -102,6 +102,20 @@
         .copy-btn { position: absolute; top: 8px; right: 8px; padding: 4px 10px; background: var(--card-bg); border: 1px solid var(--border); color: var(--accent); border-radius: 3px; font-size: 10.5px; font-family: 'IBM Plex Mono', monospace; cursor: pointer; transition: all 0.2s; }
         .copy-btn:hover { border-color: var(--accent); }
         .analysis-text { background: var(--input-bg); border: 1px solid var(--border); border-radius: 3px; padding: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; line-height: 1.8; white-space: pre-wrap; color: var(--text-dim); max-height: 300px; overflow-y: auto; }
+        .hash-block { background: var(--input-bg); border: 1px solid var(--border); border-radius: 3px; padding: 10px 12px; margin-bottom: 12px; }
+        .hash-row { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; margin-bottom: 4px; }
+        .hash-row:last-child { margin-bottom: 0; }
+        .hash-label { color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; width: 46px; flex-shrink: 0; }
+        .hash-value { color: var(--text-dim); word-break: break-all; flex: 1; }
+        .hash-copy { background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 2px; font-size: 10px; padding: 2px 6px; cursor: pointer; flex-shrink: 0; }
+        .hash-copy:hover { border-color: var(--accent); color: var(--accent); }
+        .entities-section { margin-bottom: 12px; }
+        .entities-title { font-family: 'Oswald', sans-serif; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+        .entity-group { margin-bottom: 8px; }
+        .entity-group-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; }
+        .entity-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .entity-chip { background: var(--input-bg); border: 1px solid var(--border); border-radius: 2px; padding: 3px 9px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--text); }
+        .entities-empty { color: var(--text-dim); font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
         .badge { display: inline-block; padding: 3px 10px; border-radius: 2px; font-size: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px; background: var(--accent); color: #15171b; margin-bottom: 10px; }
         .result-actions { display: flex; gap: 8px; margin-top: 10px; }
         .result-actions .btn-outline { margin-top: 0; flex: 1; }
@@ -144,7 +158,7 @@
         </div>
         <div class="header-btns">
             <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">◑</button>
-            <button class="logout-btn" onclick="window.location.href='/'">Log Out</button>
+            <button class="logout-btn" onclick="logout()">Log Out</button>
         </div>
     </div>
 
@@ -183,6 +197,8 @@
             <div class="progress-bar-wrap">
                 <div class="progress-bar" id="progressBar" style="width:0%"></div>
             </div>
+            <div class="hash-block" id="hashBlock"></div>
+            <div class="entities-section" id="entitiesSection"></div>
             <div class="analysis-wrap">
                 <button class="copy-btn" onclick="copyAnalysis()">📋 Copy</button>
                 <div class="analysis-text" id="analysisText"></div>
@@ -190,6 +206,10 @@
             <div class="result-actions">
                 <button class="btn-outline" onclick="downloadPDF()">Download Report (PDF)</button>
                 <button class="btn-outline" onclick="readAnalysis()" id="readBtn">Read Aloud</button>
+            </div>
+            <div class="result-actions">
+                <button class="btn-outline" onclick="downloadDOCX()">Download (DOCX)</button>
+                <button class="btn-outline" onclick="downloadJSON()">Download (JSON)</button>
             </div>
             <button class="btn" onclick="switchTab('ask')" style="margin-top:10px">Ask Questions About This File</button>
         </div>
@@ -218,7 +238,19 @@
         <div class="card">
             <div class="history-header">
                 <h2>Case History</h2>
-                <button class="btn-outline" style="width:auto; margin-top:0; padding:8px 14px; font-size:11px" onclick="exportHistoryPDF()">Export PDF</button>
+                <div style="display:flex; gap:6px;">
+                    <button class="btn-outline" style="width:auto; margin-top:0; padding:8px 14px; font-size:11px" onclick="exportHistoryPDF()">Export PDF</button>
+                    <button class="btn-outline" style="width:auto; margin-top:0; padding:8px 14px; font-size:11px" onclick="exportHistoryJSON()">Export JSON</button>
+                </div>
+            </div>
+            <div class="history-filters">
+                <input type="text" class="chat-input" id="historySearch" placeholder="Search by filename..." oninput="filterHistory()" style="margin-bottom:8px;">
+                <select class="chat-input" id="historyRiskFilter" onchange="filterHistory()" style="margin-bottom:12px;">
+                    <option value="all">All Risk Levels</option>
+                    <option value="low">Low (0-29)</option>
+                    <option value="medium">Medium (30-69)</option>
+                    <option value="high">High (70-100)</option>
+                </select>
             </div>
             <div id="historyList"></div>
         </div>
@@ -232,6 +264,27 @@
         let recognition = null;
         let isRecording = false;
         let isSpeaking = false;
+
+        // Every analyze/history/ask request needs to know who's asking.
+        // Real identity now comes from the httponly session cookie set at
+        // login - this localStorage value is only used to decide whether to
+        // show the dashboard at all; it grants no access by itself.
+        const currentUsername = localStorage.getItem('ufdr_username');
+        if (!currentUsername) {
+            window.location.href = '/';
+        }
+
+        function requireLogin() {
+            localStorage.removeItem('ufdr_username');
+            window.location.href = '/';
+        }
+
+        async function logout() {
+            try {
+                await fetch('/logout', { method: 'POST', credentials: 'same-origin' });
+            } catch (e) { /* proceed with client-side logout regardless */ }
+            requireLogin();
+        }
 
         function toggleTheme() {
             isLight = !isLight;
@@ -304,7 +357,8 @@
             formData.append('file', selectedFile);
 
             try {
-                const response = await fetch('/analyze', { method: 'POST', body: formData });
+                const response = await fetch('/analyze', { method: 'POST', body: formData, credentials: 'same-origin' });
+                if (response.status === 401) { return requireLogin(); }
                 const data = await response.json();
                 lastAnalysis = data;
                 fileAnalyzed = true;
@@ -325,6 +379,8 @@
                 setTimeout(() => { bar.style.width = score + '%'; }, 100);
 
                 document.getElementById('analysisText').textContent = data.analysis;
+                renderHashBlock(data.md5, data.sha256);
+                renderEntities(data.entities);
                 document.getElementById('analyzeBtn').disabled = false;
                 document.getElementById('chatEmpty').textContent = 'File analyzed. Ask me anything about ' + data.filename;
 
@@ -332,6 +388,101 @@
                 document.getElementById('loading').style.display = 'none';
                 alert('Error analyzing file. Please try again.');
                 document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        function copyToClipboard(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const original = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => { btn.textContent = original; }, 1200);
+            });
+        }
+
+        // Built with DOM APIs (createElement/textContent) rather than innerHTML,
+        // since hash and entity values originate from AI output derived from
+        // uploaded file content and must never be interpreted as HTML.
+        function renderHashBlock(md5, sha256) {
+            const block = document.getElementById('hashBlock');
+            block.innerHTML = '';
+            if (!md5 && !sha256) { block.style.display = 'none'; return; }
+            block.style.display = 'block';
+
+            const rows = [['MD5', md5], ['SHA256', sha256]];
+            rows.forEach(([label, value]) => {
+                if (!value) return;
+                const row = document.createElement('div');
+                row.className = 'hash-row';
+
+                const labelEl = document.createElement('span');
+                labelEl.className = 'hash-label';
+                labelEl.textContent = label;
+
+                const valueEl = document.createElement('span');
+                valueEl.className = 'hash-value';
+                valueEl.textContent = value;
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'hash-copy';
+                copyBtn.textContent = 'Copy';
+                copyBtn.onclick = () => copyToClipboard(value, copyBtn);
+
+                row.appendChild(labelEl);
+                row.appendChild(valueEl);
+                row.appendChild(copyBtn);
+                block.appendChild(row);
+            });
+        }
+
+        function renderEntities(entities) {
+            const section = document.getElementById('entitiesSection');
+            section.innerHTML = '';
+
+            const title = document.createElement('div');
+            title.className = 'entities-title';
+            title.textContent = 'Extracted Entities';
+            section.appendChild(title);
+
+            if (!entities) { entities = {}; }
+            const groups = [
+                ['phones', 'Phone Numbers'],
+                ['emails', 'Emails'],
+                ['urls', 'URLs'],
+                ['crypto_addresses', 'Crypto Addresses'],
+                ['ip_addresses', 'IP Addresses'],
+            ];
+
+            let anyFound = false;
+            groups.forEach(([key, label]) => {
+                const values = Array.isArray(entities[key]) ? entities[key] : [];
+                if (values.length === 0) return;
+                anyFound = true;
+
+                const group = document.createElement('div');
+                group.className = 'entity-group';
+
+                const groupLabel = document.createElement('div');
+                groupLabel.className = 'entity-group-label';
+                groupLabel.textContent = label;
+                group.appendChild(groupLabel);
+
+                const chipsWrap = document.createElement('div');
+                chipsWrap.className = 'entity-chips';
+                values.forEach(v => {
+                    const chip = document.createElement('span');
+                    chip.className = 'entity-chip';
+                    chip.textContent = v;
+                    chipsWrap.appendChild(chip);
+                });
+                group.appendChild(chipsWrap);
+                section.appendChild(group);
+            });
+
+            if (!anyFound) {
+                const empty = document.createElement('div');
+                empty.className = 'entities-empty';
+                empty.textContent = 'No phone numbers, emails, URLs, crypto addresses, or IPs detected.';
+                section.appendChild(empty);
             }
         }
 
@@ -427,9 +578,11 @@
             try {
                 const response = await fetch('/ask', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question })
                 });
+                if (response.status === 401) { return requireLogin(); }
                 const data = await response.json();
                 const replyTime = getTime();
                 document.getElementById('typing').remove();
@@ -448,9 +601,11 @@
             if (!lastAnalysis) return;
             const response = await fetch('/download-pdf', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ filename: lastAnalysis.filename, analysis: lastAnalysis.analysis })
             });
+            if (response.status === 401) { return requireLogin(); }
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -459,8 +614,48 @@
             a.click();
         }
 
+        async function downloadDOCX() {
+            if (!lastAnalysis) return;
+            const response = await fetch('/download-docx', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: lastAnalysis.filename,
+                    analysis: lastAnalysis.analysis,
+                    md5: lastAnalysis.md5,
+                    sha256: lastAnalysis.sha256
+                })
+            });
+            if (response.status === 401) { return requireLogin(); }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'UFDR_Report.docx';
+            a.click();
+        }
+
+        async function downloadJSON() {
+            if (!lastAnalysis) return;
+            const response = await fetch('/download-json', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(lastAnalysis)
+            });
+            if (response.status === 401) { return requireLogin(); }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'UFDR_Report.json';
+            a.click();
+        }
+
         async function exportHistoryPDF() {
-            const response = await fetch('/history/export-pdf');
+            const response = await fetch('/history/export-pdf', { credentials: 'same-origin' });
+            if (response.status === 401) { return requireLogin(); }
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -469,31 +664,102 @@
             a.click();
         }
 
-        async function deleteHistoryItem(index) {
+        async function exportHistoryJSON() {
+            const response = await fetch('/history/export-json', { credentials: 'same-origin' });
+            if (response.status === 401) { return requireLogin(); }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'UFDR_History_Export.json';
+            a.click();
+        }
+
+        async function deleteHistoryItem(entryId) {
             if (!confirm('Delete this history item?')) return;
-            await fetch('/history/' + index, { method: 'DELETE' });
+            const response = await fetch('/history/' + entryId, { method: 'DELETE', credentials: 'same-origin' });
+            if (response.status === 401) { return requireLogin(); }
             loadHistory();
         }
 
+        let allHistory = [];
+
         async function loadHistory() {
-            const response = await fetch('/history');
-            const history = await response.json();
+            const response = await fetch('/history', { credentials: 'same-origin' });
+            if (response.status === 401) { return requireLogin(); }
+            allHistory = await response.json();
+            document.getElementById('historySearch').value = '';
+            document.getElementById('historyRiskFilter').value = 'all';
+            renderHistoryList(allHistory);
+        }
+
+        function filterHistory() {
+            const query = document.getElementById('historySearch').value.trim().toLowerCase();
+            const riskFilter = document.getElementById('historyRiskFilter').value;
+
+            const filtered = allHistory.filter(h => {
+                const matchesQuery = !query || (h.filename || '').toLowerCase().includes(query);
+                const score = h.risk_score !== undefined ? h.risk_score : -1;
+                let matchesRisk = true;
+                if (riskFilter === 'low') matchesRisk = score >= 0 && score < 30;
+                else if (riskFilter === 'medium') matchesRisk = score >= 30 && score < 70;
+                else if (riskFilter === 'high') matchesRisk = score >= 70;
+                return matchesQuery && matchesRisk;
+            });
+            renderHistoryList(filtered);
+        }
+
+        // Built with DOM APIs rather than innerHTML template strings, since
+        // filename/filetype values originate from user-uploaded files and
+        // must never be interpreted as HTML.
+        function renderHistoryList(history) {
             const list = document.getElementById('historyList');
+            list.innerHTML = '';
+
             if (history.length === 0) {
-                list.innerHTML = '<div class="empty-history">📭 No analysis history yet</div>';
+                const empty = document.createElement('div');
+                empty.className = 'empty-history';
+                empty.textContent = '📭 No matching history items';
+                list.appendChild(empty);
                 return;
             }
-            list.innerHTML = history.map((h, i) => `
-                <div class="history-item">
-                    <div>
-                        <div class="hfile">${h.filename}</div>
-                        <div class="htype">${h.filetype}</div>
-                        <div class="hrisk">Risk: ${h.risk_score !== undefined ? h.risk_score : 'N/A'}/100</div>
-                        <div class="hdate">${h.date}</div>
-                    </div>
-                    <button class="history-delete-btn" onclick="deleteHistoryItem(${i})">✕</button>
-                </div>
-            `).join('');
+
+            history.forEach((h) => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+
+                const info = document.createElement('div');
+
+                const fileEl = document.createElement('div');
+                fileEl.className = 'hfile';
+                fileEl.textContent = h.filename || 'Unknown file';
+
+                const typeEl = document.createElement('div');
+                typeEl.className = 'htype';
+                typeEl.textContent = h.filetype || 'unknown';
+
+                const riskEl = document.createElement('div');
+                riskEl.className = 'hrisk';
+                riskEl.textContent = 'Risk: ' + (h.risk_score !== undefined ? h.risk_score : 'N/A') + '/100';
+
+                const dateEl = document.createElement('div');
+                dateEl.className = 'hdate';
+                dateEl.textContent = h.date || '';
+
+                info.appendChild(fileEl);
+                info.appendChild(typeEl);
+                info.appendChild(riskEl);
+                info.appendChild(dateEl);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'history-delete-btn';
+                delBtn.textContent = '✕';
+                delBtn.onclick = () => deleteHistoryItem(h.id);
+
+                item.appendChild(info);
+                item.appendChild(delBtn);
+                list.appendChild(item);
+            });
         }
     </script>
 <div style="text-align:center; padding: 20px; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border); margin-top: 10px;">
