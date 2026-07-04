@@ -4,152 +4,178 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UFDR Analysis Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg: #0a0f1e;
-            --card-bg: #0d1428;
-            --border: #1e3a8a;
-            --text: #e0e6ff;
-            --text-dim: #94a3b8;
-            --accent: #60a5fa;
-            --input-bg: #0a0f1e;
+            --bg: #15171b;
+            --card-bg: #1c1f24;
+            --input-bg: #191c20;
+            --border: #3a3f47;
+            --text: #e9e6dc;
+            --text-dim: #8b8f96;
+            --accent: #c98a2c;
+            --seal: #b0272d;
+            --verified: #4f9d69;
         }
         body.light {
-            --bg: #f4f6fb;
+            --bg: #eeece5;
             --card-bg: #ffffff;
-            --border: #c7d2fe;
-            --text: #1e293b;
-            --text-dim: #64748b;
-            --accent: #2563eb;
-            --input-bg: #f1f5f9;
+            --input-bg: #f4f2ec;
+            --border: #d8d3c4;
+            --text: #23211d;
+            --text-dim: #6b675e;
+            --accent: #a8671f;
+            --seal: #9c2a2a;
+            --verified: #2f7d4f;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
-        .header { background: var(--card-bg); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--border); }
-        .header h1 { font-size: 18px; color: var(--accent); letter-spacing: 2px; }
-        .header p { color: var(--text-dim); font-size: 11px; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            background-image: repeating-linear-gradient(0deg, rgba(233,230,220,0.02) 0px, rgba(233,230,220,0.02) 1px, transparent 1px, transparent 3px);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+        body.light { background-image: none; }
+        .header { background: var(--card-bg); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--accent); }
+        .header h1 { font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: 2.5px; text-transform: uppercase; }
+        .header p { color: var(--text-dim); font-size: 10.5px; font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
         .header-btns { display: flex; gap: 8px; align-items: center; }
-        .icon-btn { padding: 6px 10px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); cursor: pointer; font-size: 14px; }
+        .icon-btn { padding: 6px 10px; background: transparent; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); cursor: pointer; font-size: 14px; }
         .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .logout-btn { padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); cursor: pointer; font-size: 12px; }
-        .logout-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .logout-btn { padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); cursor: pointer; font-size: 11px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.5px; text-transform: uppercase; }
+        .logout-btn:hover { border-color: var(--seal); color: var(--seal); }
         .tabs { display: flex; background: var(--card-bg); border-bottom: 1px solid var(--border); }
-        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-size: 13px; color: var(--text-dim); border-bottom: 2px solid transparent; transition: all 0.3s; }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-size: 12px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); border-bottom: 2px solid transparent; transition: all 0.3s; }
         .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
         .page { display: none; padding: 20px 16px; }
         .page.active { display: block; }
-        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-        .card h2 { font-size: 15px; color: var(--accent); margin-bottom: 14px; }
-        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 28px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 20px; margin-bottom: 16px; position: relative; }
+        .card h2 { font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text); margin-bottom: 14px; }
+        .upload-area { border: 2px dashed var(--border); border-radius: 4px; padding: 26px; text-align: center; cursor: pointer; transition: all 0.3s; }
         .upload-area:hover { border-color: var(--accent); }
         .upload-area input { display: none; }
-        .upload-icon { font-size: 36px; margin-bottom: 8px; }
+        .upload-icon { font-size: 30px; margin-bottom: 8px; opacity: 0.8; }
         .upload-area p { color: var(--text-dim); font-size: 13px; }
-        .file-name { color: var(--accent); font-size: 12px; margin-top: 6px; }
+        .file-name { color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; margin-top: 10px; }
+        .evidence-tag {
+            display: inline-flex; align-items: stretch; margin-top: 12px; text-align: left;
+            border: 1px solid var(--border); border-radius: 3px; overflow: hidden; background: var(--input-bg);
+        }
+        .evidence-tag .hole-col {
+            width: 20px; display: flex; align-items: center; justify-content: center;
+            background: repeating-linear-gradient(180deg, transparent 0 6px, var(--border) 6px 7px);
+            border-right: 1px dashed var(--border);
+        }
+        .evidence-tag .hole-col::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border); }
+        .evidence-tag .tag-body { padding: 8px 14px; }
+        .evidence-tag .tag-case { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; color: var(--accent); text-transform: uppercase; }
+        .evidence-tag .tag-file { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); margin-top: 2px; }
         .file-badges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
-        .file-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; background: var(--border); color: var(--accent); }
-        .btn { width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 14px; transition: opacity 0.3s; }
-        .btn:hover { opacity: 0.85; }
-        .btn:disabled { background: #334155; cursor: not-allowed; opacity: 0.6; }
-        .btn-outline { width: 100%; padding: 11px; background: transparent; color: var(--accent); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; cursor: pointer; margin-top: 10px; transition: all 0.3s; }
-        .btn-outline:hover { border-color: var(--accent); }
-        .loading { text-align: center; padding: 20px; color: var(--accent); display: none; }
-        .spinner { width: 38px; height: 38px; border: 3px solid var(--border); border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .file-badge { padding: 3px 10px; border-radius: 2px; font-size: 10.5px; font-family: 'IBM Plex Mono', monospace; background: var(--input-bg); border: 1px solid var(--border); color: var(--accent); }
+        .btn { width: 100%; padding: 13px; background: var(--accent); color: #15171b; border: none; border-radius: 3px; font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; margin-top: 14px; transition: filter 0.2s; }
+        .btn:hover { filter: brightness(1.12); }
+        .btn:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; filter: none; }
+        .btn-outline { width: 100%; padding: 11px; background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 3px; font-size: 12.5px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.5px; cursor: pointer; margin-top: 10px; transition: all 0.3s; }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+        .loading { text-align: center; padding: 24px 20px; color: var(--accent); display: none; }
+        .spinner { width: 100%; max-width: 220px; height: 34px; margin: 0 auto 12px; border: 1px solid var(--border); border-radius: 3px; background:
+            repeating-linear-gradient(90deg, var(--input-bg) 0px, var(--input-bg) 3px, transparent 3px, transparent 6px); overflow: hidden; position: relative; }
+        .spinner::after { content: ''; position: absolute; top: 0; left: -30%; width: 30%; height: 100%; background: linear-gradient(90deg, transparent, rgba(201,138,44,0.55), transparent); animation: scan 1.3s linear infinite; }
+        @keyframes scan { 0% { left: -30%; } 100% { left: 100%; } }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         .result { display: none; }
-        .risk-box { text-align: center; padding: 18px; border-radius: 8px; margin-bottom: 10px; }
-        .risk-score { font-size: 44px; font-weight: bold; }
-        .risk-label { font-size: 13px; margin-top: 4px; }
-        .low { background: #052e16; color: #4ade80; }
-        .medium { background: #422006; color: #fb923c; }
-        .high { background: #450a0a; color: #f87171; }
-        body.light .low { background: #dcfce7; color: #16a34a; }
-        body.light .medium { background: #ffedd5; color: #ea580c; }
-        body.light .high { background: #fee2e2; color: #dc2626; }
-        .progress-bar-wrap { background: var(--input-bg); border-radius: 8px; height: 10px; margin: 10px 0 14px; overflow: hidden; border: 1px solid var(--border); }
-        .progress-bar { height: 100%; border-radius: 8px; transition: width 1s ease; }
-        .progress-low { background: #4ade80; }
-        .progress-medium { background: #fb923c; }
-        .progress-high { background: #f87171; }
+        .risk-box { text-align: center; padding: 18px; border-radius: 4px; margin-bottom: 10px; border: 2px solid; position: relative; }
+        .risk-score { font-family: 'Oswald', sans-serif; font-size: 42px; font-weight: 700; }
+        .risk-label { font-size: 11px; margin-top: 2px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px; text-transform: uppercase; }
+        .low { background: rgba(79,157,105,0.1); color: var(--verified); border-color: var(--verified); }
+        .medium { background: rgba(201,138,44,0.1); color: var(--accent); border-color: var(--accent); }
+        .high { background: rgba(176,39,45,0.1); color: var(--seal); border-color: var(--seal); }
+        .progress-bar-wrap { background: var(--input-bg); border-radius: 3px; height: 8px; margin: 10px 0 14px; overflow: hidden; border: 1px solid var(--border); }
+        .progress-bar { height: 100%; border-radius: 2px; transition: width 1s ease; }
+        .progress-low { background: var(--verified); }
+        .progress-medium { background: var(--accent); }
+        .progress-high { background: var(--seal); }
         .analysis-wrap { position: relative; }
-        .copy-btn { position: absolute; top: 8px; right: 8px; padding: 4px 10px; background: var(--border); color: var(--accent); border: none; border-radius: 6px; font-size: 11px; cursor: pointer; transition: all 0.3s; }
-        .copy-btn:hover { background: var(--accent); color: #fff; }
-        .analysis-text { background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 14px 14px 14px; font-size: 12px; line-height: 1.8; white-space: pre-wrap; color: var(--text-dim); max-height: 300px; overflow-y: auto; }
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; background: var(--accent); color: #fff; margin-bottom: 10px; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; padding: 4px 10px; background: var(--card-bg); border: 1px solid var(--border); color: var(--accent); border-radius: 3px; font-size: 10.5px; font-family: 'IBM Plex Mono', monospace; cursor: pointer; transition: all 0.2s; }
+        .copy-btn:hover { border-color: var(--accent); }
+        .analysis-text { background: var(--input-bg); border: 1px solid var(--border); border-radius: 3px; padding: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; line-height: 1.8; white-space: pre-wrap; color: var(--text-dim); max-height: 300px; overflow-y: auto; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 2px; font-size: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px; background: var(--accent); color: #15171b; margin-bottom: 10px; }
         .result-actions { display: flex; gap: 8px; margin-top: 10px; }
         .result-actions .btn-outline { margin-top: 0; flex: 1; }
         .chat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
         .chat-header h2 { margin-bottom: 0; }
-        .clear-chat-btn { padding: 5px 12px; background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 6px; font-size: 12px; cursor: pointer; }
-        .clear-chat-btn:hover { border-color: #f87171; color: #f87171; }
-        .chat-box { background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; height: 280px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
-        .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.6; }
-        .chat-msg.user { background: var(--accent); color: #fff; align-self: flex-end; border-radius: 10px 10px 0 10px; }
-        .chat-msg.ai { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-dim); align-self: flex-start; border-radius: 10px 10px 10px 0; }
-        .chat-time { font-size: 10px; opacity: 0.6; margin-top: 4px; }
+        .clear-chat-btn { padding: 5px 12px; background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 3px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; cursor: pointer; }
+        .clear-chat-btn:hover { border-color: var(--seal); color: var(--seal); }
+        .chat-box { background: var(--input-bg); border: 1px solid var(--border); border-radius: 3px; padding: 12px; height: 280px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 4px; font-size: 13px; line-height: 1.6; }
+        .chat-msg.user { background: var(--accent); color: #15171b; align-self: flex-end; }
+        .chat-msg.ai { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-dim); align-self: flex-start; }
+        .chat-time { font-size: 10px; font-family: 'IBM Plex Mono', monospace; opacity: 0.6; margin-top: 4px; }
         .chat-input-row { display: flex; gap: 8px; }
-        .chat-input { flex: 1; padding: 11px 14px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; }
+        .chat-input { flex: 1; padding: 11px 14px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 3px; color: var(--text); font-size: 13px; outline: none; }
         .chat-input:focus { border-color: var(--accent); }
-        .chat-mic { padding: 11px 14px; background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 8px; cursor: pointer; font-size: 16px; transition: all 0.3s; }
+        .chat-mic { padding: 11px 14px; background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 3px; cursor: pointer; font-size: 16px; transition: all 0.3s; }
         .chat-mic:hover { border-color: var(--accent); color: var(--accent); }
-        .chat-mic.recording { border-color: #f87171; color: #f87171; animation: pulse 1s infinite; }
-        .chat-send { padding: 11px 16px; background: var(--accent); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; transition: opacity 0.3s; }
-        .chat-send:hover { opacity: 0.85; }
-        .chat-send:disabled { background: #334155; cursor: not-allowed; }
-        .chat-empty { color: var(--text-dim); font-size: 12px; text-align: center; margin: auto; }
+        .chat-mic.recording { border-color: var(--seal); color: var(--seal); animation: pulse 1s infinite; }
+        .chat-send { padding: 11px 16px; background: var(--accent); color: #15171b; border: none; border-radius: 3px; cursor: pointer; font-size: 16px; transition: filter 0.2s; }
+        .chat-send:hover { filter: brightness(1.12); }
+        .chat-send:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; }
+        .chat-empty { color: var(--text-dim); font-size: 12px; font-family: 'IBM Plex Mono', monospace; text-align: center; margin: auto; }
         .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
         .history-header h2 { margin-bottom: 0; }
-        .history-item { background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .history-item { background: var(--input-bg); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 2px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .history-item .hfile { font-size: 13px; color: var(--text); font-weight: 500; }
-        .history-item .hdate { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
-        .history-item .htype { font-size: 11px; color: var(--accent); margin-top: 2px; }
+        .history-item .hdate { font-size: 10.5px; color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; margin-top: 3px; }
+        .history-item .htype { font-size: 10.5px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
         .history-item .hrisk { font-size: 11px; margin-top: 2px; }
-        .history-delete-btn { background: transparent; border: 1px solid #f87171; color: #f87171; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 13px; flex-shrink: 0; }
-        .history-delete-btn:hover { background: #f87171; color: #fff; }
-        .empty-history { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 13px; }
+        .history-delete-btn { background: transparent; border: 1px solid var(--seal); color: var(--seal); border-radius: 3px; padding: 6px 10px; cursor: pointer; font-size: 13px; flex-shrink: 0; }
+        .history-delete-btn:hover { background: var(--seal); color: #fff; }
+        .empty-history { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; }
     </style>
 </head>
 <body>
     <div class="header">
         <div>
-            <h1>🔍 UFDR TOOL</h1>
+            <h1>UFDR Tool</h1>
             <p>Unified Forensic Data Report</p>
         </div>
         <div class="header-btns">
-            <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
-            <button class="logout-btn" onclick="window.location.href='/'">Logout</button>
+            <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">◑</button>
+            <button class="logout-btn" onclick="window.location.href='/'">Log Out</button>
         </div>
     </div>
 
     <div class="tabs">
-        <div class="tab active" onclick="switchTab('analyze')">🔬 Analyze</div>
-        <div class="tab" onclick="switchTab('ask')">💬 Ask AI</div>
-        <div class="tab" onclick="switchTab('history')">📋 History</div>
+        <div class="tab active" onclick="switchTab('analyze')">Analyze</div>
+        <div class="tab" onclick="switchTab('ask')">Ask AI</div>
+        <div class="tab" onclick="switchTab('history')">History</div>
     </div>
 
     <!-- Analyze Page -->
     <div class="page active" id="analyzePage">
         <div class="card">
-            <h2>Upload File for Analysis</h2>
+            <h2>Submit Evidence File</h2>
             <div class="upload-area" onclick="document.getElementById('fileInput').click()">
                 <input type="file" id="fileInput" onchange="fileSelected(this)">
-                <div class="upload-icon">📁</div>
-                <p>Tap to upload any file</p>
-                <p style="font-size:11px; color:var(--text-dim); margin-top:4px">Images, PDFs, Documents, Logs, CSV</p>
+                <div class="upload-icon">⌷</div>
+                <p>Tap to select a file for intake</p>
+                <p style="font-size:11px; color:var(--text-dim); margin-top:4px; font-family:'IBM Plex Mono',monospace;">Images · PDFs · Documents · Logs · CSV</p>
                 <div class="file-name" id="fileName"></div>
                 <div class="file-badges" id="fileBadges"></div>
             </div>
-            <button class="btn" id="analyzeBtn" onclick="analyzeFile()" disabled>🔬 Analyze File</button>
+            <button class="btn" id="analyzeBtn" onclick="analyzeFile()" disabled>Run Analysis</button>
         </div>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Analyzing file... Please wait</p>
+            <p style="font-family:'IBM Plex Mono',monospace; font-size:12px;">Scanning file — please wait</p>
         </div>
 
         <div class="card result" id="result">
-            <span class="badge">UFDR REPORT</span>
+            <span class="badge">EVD REPORT · CASE ANALYSIS</span>
             <div class="risk-box" id="riskBox">
                 <div class="risk-score" id="riskScore">--</div>
                 <div class="risk-label">Risk Score / 100</div>
@@ -162,10 +188,10 @@
                 <div class="analysis-text" id="analysisText"></div>
             </div>
             <div class="result-actions">
-                <button class="btn-outline" onclick="downloadPDF()">📄 Download PDF</button>
-                <button class="btn-outline" onclick="readAnalysis()" id="readBtn">🔊 Read Aloud</button>
+                <button class="btn-outline" onclick="downloadPDF()">Download Report (PDF)</button>
+                <button class="btn-outline" onclick="readAnalysis()" id="readBtn">Read Aloud</button>
             </div>
-            <button class="btn" onclick="switchTab('ask')" style="margin-top:10px">💬 Ask Questions About This File</button>
+            <button class="btn" onclick="switchTab('ask')" style="margin-top:10px">Ask Questions About This File</button>
         </div>
     </div>
 
@@ -173,16 +199,16 @@
     <div class="page" id="askPage">
         <div class="card">
             <div class="chat-header">
-                <h2>💬 Ask AI About the File</h2>
-                <button class="clear-chat-btn" onclick="clearChat()">🗑️ Clear Chat</button>
+                <h2>Interview the File</h2>
+                <button class="clear-chat-btn" onclick="clearChat()">Clear</button>
             </div>
             <div class="chat-box" id="chatBox">
-                <div class="chat-empty" id="chatEmpty">📂 Upload and analyze a file first, then ask questions here!</div>
+                <div class="chat-empty" id="chatEmpty">Submit and analyze a file first, then ask questions here.</div>
             </div>
             <div class="chat-input-row">
                 <input type="text" class="chat-input" id="questionInput" placeholder="Ask something about the file..." onkeypress="if(event.key==='Enter') askQuestion()">
-                <button class="chat-mic" id="micBtn" onclick="toggleVoiceInput()" title="Voice Input">🎤</button>
-                <button class="chat-send" id="sendBtn" onclick="askQuestion()">➤</button>
+                <button class="chat-mic" id="micBtn" onclick="toggleVoiceInput()" title="Voice Input">●</button>
+                <button class="chat-send" id="sendBtn" onclick="askQuestion()">→</button>
             </div>
         </div>
     </div>
@@ -191,8 +217,8 @@
     <div class="page" id="historyPage">
         <div class="card">
             <div class="history-header">
-                <h2>Analysis History</h2>
-                <button class="btn-outline" style="width:auto; margin-top:0; padding:8px 14px; font-size:12px" onclick="exportHistoryPDF()">📥 Export PDF</button>
+                <h2>Case History</h2>
+                <button class="btn-outline" style="width:auto; margin-top:0; padding:8px 14px; font-size:11px" onclick="exportHistoryPDF()">Export PDF</button>
             </div>
             <div id="historyList"></div>
         </div>
@@ -234,10 +260,26 @@
             return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
+        function generateCaseNumber() {
+            const now = new Date();
+            const datePart = now.getFullYear().toString() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+            const rand = Math.floor(1000 + Math.random() * 9000);
+            return `EVD-${datePart}-${rand}`;
+        }
+
         function fileSelected(input) {
             selectedFile = input.files[0];
             if (selectedFile) {
-                document.getElementById('fileName').textContent = '✅ ' + selectedFile.name;
+                const caseNumber = generateCaseNumber();
+                document.getElementById('fileName').innerHTML = `
+                    <div class="evidence-tag">
+                        <div class="hole-col"></div>
+                        <div class="tag-body">
+                            <div class="tag-case">CASE ${caseNumber}</div>
+                            <div class="tag-file">${selectedFile.name}</div>
+                        </div>
+                    </div>
+                `;
                 document.getElementById('analyzeBtn').disabled = false;
 
                 // Show file badges
@@ -245,9 +287,9 @@
                 const size = formatBytes(selectedFile.size);
                 const type = selectedFile.type || 'unknown';
                 document.getElementById('fileBadges').innerHTML = `
-                    <span class="file-badge">📎 ${ext}</span>
-                    <span class="file-badge">💾 ${size}</span>
-                    <span class="file-badge">🗂️ ${type.split('/')[1] || type}</span>
+                    <span class="file-badge">${ext}</span>
+                    <span class="file-badge">${size}</span>
+                    <span class="file-badge">${type.split('/')[1] || type}</span>
                 `;
             }
         }
@@ -284,7 +326,7 @@
 
                 document.getElementById('analysisText').textContent = data.analysis;
                 document.getElementById('analyzeBtn').disabled = false;
-                document.getElementById('chatEmpty').textContent = '✅ File analyzed! Ask me anything about ' + data.filename;
+                document.getElementById('chatEmpty').textContent = 'File analyzed. Ask me anything about ' + data.filename;
 
             } catch (err) {
                 document.getElementById('loading').style.display = 'none';
@@ -297,7 +339,7 @@
             const text = document.getElementById('analysisText').textContent;
             navigator.clipboard.writeText(text).then(() => {
                 const btn = document.querySelector('.copy-btn');
-                btn.textContent = '✅ Copied!';
+                btn.textContent = 'Copied';
                 setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
             });
         }
@@ -307,7 +349,7 @@
             if (isSpeaking) {
                 window.speechSynthesis.cancel();
                 isSpeaking = false;
-                document.getElementById('readBtn').textContent = '🔊 Read Aloud';
+                document.getElementById('readBtn').textContent = 'Read Aloud';
                 return;
             }
             const text = document.getElementById('analysisText').textContent;
@@ -320,11 +362,11 @@
             };
             utterance.onend = () => {
                 isSpeaking = false;
-                document.getElementById('readBtn').textContent = '🔊 Read Aloud';
+                document.getElementById('readBtn').textContent = 'Read Aloud';
             };
             utterance.onerror = () => {
                 isSpeaking = false;
-                document.getElementById('readBtn').textContent = '🔊 Read Aloud';
+                document.getElementById('readBtn').textContent = 'Read Aloud';
             };
             window.speechSynthesis.speak(utterance);
         }
@@ -351,19 +393,19 @@
             recognition.onend = () => {
                 isRecording = false;
                 document.getElementById('micBtn').classList.remove('recording');
-                document.getElementById('micBtn').textContent = '🎤';
+                document.getElementById('micBtn').textContent = '●';
             };
             recognition.onerror = () => {
                 isRecording = false;
                 document.getElementById('micBtn').classList.remove('recording');
-                document.getElementById('micBtn').textContent = '🎤';
+                document.getElementById('micBtn').textContent = '●';
             };
             recognition.start();
         }
 
         function clearChat() {
             const chatBox = document.getElementById('chatBox');
-            chatBox.innerHTML = '<div class="chat-empty" id="chatEmpty">📂 Chat cleared. Ask a new question!</div>';
+            chatBox.innerHTML = '<div class="chat-empty" id="chatEmpty">Chat cleared. Ask a new question.</div>';
         }
 
         async function askQuestion() {
@@ -444,12 +486,12 @@
             list.innerHTML = history.map((h, i) => `
                 <div class="history-item">
                     <div>
-                        <div class="hfile">📄 ${h.filename}</div>
+                        <div class="hfile">${h.filename}</div>
                         <div class="htype">${h.filetype}</div>
-                        <div class="hrisk">⚠️ Risk: ${h.risk_score !== undefined ? h.risk_score : 'N/A'}/100</div>
-                        <div class="hdate">🕐 ${h.date}</div>
+                        <div class="hrisk">Risk: ${h.risk_score !== undefined ? h.risk_score : 'N/A'}/100</div>
+                        <div class="hdate">${h.date}</div>
                     </div>
-                    <button class="history-delete-btn" onclick="deleteHistoryItem(${i})">🗑️</button>
+                    <button class="history-delete-btn" onclick="deleteHistoryItem(${i})">✕</button>
                 </div>
             `).join('');
         }
