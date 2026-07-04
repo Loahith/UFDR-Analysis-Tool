@@ -18,6 +18,7 @@ from datetime import datetime
 load_dotenv()
 
 app = FastAPI()
+os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
