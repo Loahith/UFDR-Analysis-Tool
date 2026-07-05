@@ -71,6 +71,14 @@ def compute_hashes(contents):
         "sha256": hashlib.sha256(contents).hexdigest(),
     }
 
+def build_signature(analysis_text, username, signed_at):
+    """Produces a verifiable seal for an exported report: hashing the report
+    content together with who signed it and when, so any later edit to the
+    exported document's text would produce a different hash than what's
+    printed on the document itself."""
+    payload = f"{analysis_text}|{username}|{signed_at}".encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
 def parse_entities(result_text):
     """Extract the ENTITIES_JSON block the model was asked to produce.
     Always returns a dict with the expected keys, defaulting to empty lists
@@ -373,7 +381,7 @@ async def export_history_pdf(username: str = Depends(get_current_user)):
     c.drawString(50, height - 60, "UFDR ANALYSIS HISTORY REPORT")
     c.setFillColorRGB(0.58, 0.64, 0.73)
     c.setFont("Helvetica", 11)
-    c.drawString(50, height - 85, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}   |   Total Files: {len(history)}")
+    c.drawString(50, height - 85, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}   |   Total Files: {len(history)}   |   Compiled by: {username}")
     c.setFillColorRGB(0.12, 0.23, 0.54)
     c.rect(50, height - 95, width - 100, 1, fill=1)
 
@@ -423,6 +431,7 @@ async def download_pdf(request: Request, username: str = Depends(get_current_use
     filename = data.get("filename", "unknown")
     analysis = data.get("analysis", "")
     date = datetime.now().strftime("%Y-%m-%d %H:%M")
+    signature_hash = build_signature(analysis, username, date)
 
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
@@ -454,6 +463,31 @@ async def download_pdf(request: Request, username: str = Depends(get_current_use
             c.setFont("Helvetica", 10)
             c.drawString(50, y, wline)
             y -= 16
+
+    # Digital sign-off block
+    if y < 130:
+        c.showPage()
+        c.setFillColorRGB(0.04, 0.06, 0.12)
+        c.rect(0, 0, width, height, fill=1)
+        y = height - 60
+    y -= 10
+    c.setFillColorRGB(0.12, 0.23, 0.54)
+    c.rect(50, y, width - 100, 1, fill=1)
+    y -= 20
+    c.setFillColorRGB(0.38, 0.65, 0.98)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(50, y, "DIGITAL SIGN-OFF")
+    y -= 18
+    c.setFillColorRGB(0.58, 0.64, 0.73)
+    c.setFont("Helvetica", 9)
+    c.drawString(50, y, f"Reviewed & signed by: {username}")
+    y -= 14
+    c.drawString(50, y, f"Signed at: {date}")
+    y -= 14
+    for wline in simpleSplit(f"Integrity hash (SHA-256): {signature_hash}", "Helvetica", 9, width - 100):
+        c.drawString(50, y, wline)
+        y -= 14
+
     c.save()
     buffer.seek(0)
     return StreamingResponse(
@@ -470,6 +504,7 @@ async def download_docx(request: Request, username: str = Depends(get_current_us
     md5 = data.get("md5", "")
     sha256 = data.get("sha256", "")
     date = datetime.now().strftime("%Y-%m-%d %H:%M")
+    signature_hash = build_signature(analysis, username, date)
 
     doc = Document()
 
@@ -494,6 +529,17 @@ async def download_docx(request: Request, username: str = Depends(get_current_us
     for line in analysis.split("\n"):
         para = doc.add_paragraph(line if line.strip() else "")
         para.paragraph_format.space_after = Pt(4)
+
+    doc.add_heading("Digital Sign-Off", level=2)
+    p = doc.add_paragraph()
+    p.add_run("Reviewed & signed by: ").bold = True
+    p.add_run(username)
+    p = doc.add_paragraph()
+    p.add_run("Signed at: ").bold = True
+    p.add_run(date)
+    p = doc.add_paragraph()
+    p.add_run("Integrity hash (SHA-256): ").bold = True
+    p.add_run(signature_hash)
 
     buffer = io.BytesIO()
     doc.save(buffer)
