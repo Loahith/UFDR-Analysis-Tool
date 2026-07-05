@@ -6,6 +6,7 @@
     <title>UFDR Analysis Tool</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -116,6 +117,15 @@
         .entity-chips { display: flex; flex-wrap: wrap; gap: 6px; }
         .entity-chip { background: var(--input-bg); border: 1px solid var(--border); border-radius: 2px; padding: 3px 9px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--text); }
         .entities-empty { color: var(--text-dim); font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+
+        .dash-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .dash-stat-box { background: var(--input-bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px; text-align: center; }
+        .dash-stat-value { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 600; color: var(--accent); }
+        .dash-stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-dim); margin-top: 4px; }
+
+        .redact-toggle-row { margin-bottom: 12px; }
+        .redact-toggle { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); cursor: pointer; user-select: none; }
+        .redact-toggle input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
         .badge { display: inline-block; padding: 3px 10px; border-radius: 2px; font-size: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px; background: var(--accent); color: #15171b; margin-bottom: 10px; }
         .result-actions { display: flex; gap: 8px; margin-top: 10px; }
         .result-actions .btn-outline { margin-top: 0; flex: 1; }
@@ -166,6 +176,7 @@
         <div class="tab active" onclick="switchTab('analyze')">Analyze</div>
         <div class="tab" onclick="switchTab('ask')">Ask AI</div>
         <div class="tab" onclick="switchTab('history')">History</div>
+        <div class="tab" onclick="switchTab('dashboard')">Dashboard</div>
     </div>
 
     <!-- Analyze Page -->
@@ -198,6 +209,12 @@
                 <div class="progress-bar" id="progressBar" style="width:0%"></div>
             </div>
             <div class="hash-block" id="hashBlock"></div>
+            <div class="redact-toggle-row">
+                <label class="redact-toggle">
+                    <input type="checkbox" id="redactToggle" onchange="onRedactToggle()">
+                    <span>Redact PII in view &amp; downloads</span>
+                </label>
+            </div>
             <div class="entities-section" id="entitiesSection"></div>
             <div class="analysis-wrap">
                 <button class="copy-btn" onclick="copyAnalysis()">📋 Copy</button>
@@ -256,9 +273,28 @@
         </div>
     </div>
 
+    <!-- Dashboard Page -->
+    <div class="page" id="dashboardPage">
+        <div class="card">
+            <h2 style="margin-bottom:16px;">Case Dashboard</h2>
+            <div class="dash-stats" id="dashStats"></div>
+        </div>
+        <div class="card">
+            <h2 style="margin-bottom:16px;">Risk Score Over Time</h2>
+            <div id="dashRiskEmpty" class="empty-history" style="display:none;">📭 No analysis history yet</div>
+            <canvas id="riskTrendChart" height="220"></canvas>
+        </div>
+        <div class="card">
+            <h2 style="margin-bottom:16px;">Entities Detected (All Cases)</h2>
+            <div id="dashEntityEmpty" class="empty-history" style="display:none;">📭 No entities detected yet</div>
+            <canvas id="entityBreakdownChart" height="220"></canvas>
+        </div>
+    </div>
+
     <script>
         let selectedFile = null;
         let lastAnalysis = null;
+        let redactPII = false;
         let fileAnalyzed = false;
         let isLight = false;
         let recognition = null;
@@ -295,11 +331,12 @@
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            const tabs = ['analyze', 'ask', 'history'];
+            const tabs = ['analyze', 'ask', 'history', 'dashboard'];
             const idx = tabs.indexOf(tab);
             document.querySelectorAll('.tab')[idx].classList.add('active');
             document.getElementById(tab + 'Page').classList.add('active');
             if (tab === 'history') loadHistory();
+            if (tab === 'dashboard') loadDashboard();
         }
 
         function formatBytes(bytes) {
@@ -378,9 +415,9 @@
                 bar.className = 'progress-bar progress-' + cls;
                 setTimeout(() => { bar.style.width = score + '%'; }, 100);
 
-                document.getElementById('analysisText').textContent = data.analysis;
-                renderHashBlock(data.md5, data.sha256);
-                renderEntities(data.entities);
+                redactPII = false;
+                document.getElementById('redactToggle').checked = false;
+                renderResultView();
                 document.getElementById('analyzeBtn').disabled = false;
                 document.getElementById('chatEmpty').textContent = 'File analyzed. Ask me anything about ' + data.filename;
 
@@ -486,6 +523,49 @@
             }
         }
 
+        // Single source of truth for what's currently shown in the result
+        // card, so the redaction toggle can re-render without re-fetching.
+        function renderResultView() {
+            if (!lastAnalysis) return;
+            const entities = lastAnalysis.entities || {};
+            const displayText = redactPII ? redactText(lastAnalysis.analysis, entities) : lastAnalysis.analysis;
+            document.getElementById('analysisText').textContent = displayText;
+            renderHashBlock(lastAnalysis.md5, lastAnalysis.sha256);
+            renderEntities(redactPII ? redactEntities(entities) : entities);
+        }
+
+        function onRedactToggle() {
+            redactPII = document.getElementById('redactToggle').checked;
+            renderResultView();
+        }
+
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function redactText(text, entities) {
+            let result = text;
+            Object.values(entities).forEach(values => {
+                if (!Array.isArray(values)) return;
+                values.forEach(val => {
+                    if (!val) return;
+                    const re = new RegExp(escapeRegex(val), 'g');
+                    result = result.replace(re, '[REDACTED]');
+                });
+            });
+            return result;
+        }
+
+        function redactEntities(entities) {
+            const redacted = {};
+            Object.keys(entities).forEach(key => {
+                redacted[key] = Array.isArray(entities[key])
+                    ? entities[key].map(() => '[REDACTED]')
+                    : [];
+            });
+            return redacted;
+        }
+
         function copyAnalysis() {
             const text = document.getElementById('analysisText').textContent;
             navigator.clipboard.writeText(text).then(() => {
@@ -569,10 +649,15 @@
             if (emptyMsg) emptyMsg.style.display = 'none';
 
             const time = getTime();
-            chatBox.innerHTML += `<div class="chat-msg user">🧑 ${question}<div class="chat-time">${time}</div></div>`;
+            appendChatBubble(chatBox, 'user', '🧑 ' + question, time);
             input.value = '';
             document.getElementById('sendBtn').disabled = true;
-            chatBox.innerHTML += `<div class="chat-msg ai" id="typing">⏳ Thinking...</div>`;
+
+            const typing = document.createElement('div');
+            typing.className = 'chat-msg ai';
+            typing.id = 'typing';
+            typing.textContent = '⏳ Thinking...';
+            chatBox.appendChild(typing);
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -586,24 +671,41 @@
                 const data = await response.json();
                 const replyTime = getTime();
                 document.getElementById('typing').remove();
-                chatBox.innerHTML += `<div class="chat-msg ai">🤖 ${data.answer}<div class="chat-time">${replyTime}</div></div>`;
+                appendChatBubble(chatBox, 'ai', '🤖 ' + data.answer, replyTime);
                 chatBox.scrollTop = chatBox.scrollHeight;
                 document.getElementById('sendBtn').disabled = false;
 
             } catch (err) {
                 document.getElementById('typing').remove();
-                chatBox.innerHTML += `<div class="chat-msg ai">❌ Error getting answer. Try again.</div>`;
+                appendChatBubble(chatBox, 'ai', '❌ Error getting answer. Try again.', null);
                 document.getElementById('sendBtn').disabled = false;
             }
         }
 
+        // AI answers (and the user's own question) are untrusted text as far
+        // as the DOM is concerned, so this uses textContent rather than
+        // innerHTML string interpolation.
+        function appendChatBubble(chatBox, role, text, time) {
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-msg ' + role;
+            bubble.appendChild(document.createTextNode(text));
+            if (time) {
+                const timeEl = document.createElement('div');
+                timeEl.className = 'chat-time';
+                timeEl.textContent = time;
+                bubble.appendChild(timeEl);
+            }
+            chatBox.appendChild(bubble);
+        }
+
         async function downloadPDF() {
             if (!lastAnalysis) return;
+            const analysisToSend = redactPII ? redactText(lastAnalysis.analysis, lastAnalysis.entities || {}) : lastAnalysis.analysis;
             const response = await fetch('/download-pdf', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: lastAnalysis.filename, analysis: lastAnalysis.analysis })
+                body: JSON.stringify({ filename: lastAnalysis.filename, analysis: analysisToSend })
             });
             if (response.status === 401) { return requireLogin(); }
             const blob = await response.blob();
@@ -616,13 +718,14 @@
 
         async function downloadDOCX() {
             if (!lastAnalysis) return;
+            const analysisToSend = redactPII ? redactText(lastAnalysis.analysis, lastAnalysis.entities || {}) : lastAnalysis.analysis;
             const response = await fetch('/download-docx', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     filename: lastAnalysis.filename,
-                    analysis: lastAnalysis.analysis,
+                    analysis: analysisToSend,
                     md5: lastAnalysis.md5,
                     sha256: lastAnalysis.sha256
                 })
@@ -638,11 +741,14 @@
 
         async function downloadJSON() {
             if (!lastAnalysis) return;
+            const payload = redactPII
+                ? { ...lastAnalysis, analysis: redactText(lastAnalysis.analysis, lastAnalysis.entities || {}), entities: redactEntities(lastAnalysis.entities || {}) }
+                : lastAnalysis;
             const response = await fetch('/download-json', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(lastAnalysis)
+                body: JSON.stringify(payload)
             });
             if (response.status === 401) { return requireLogin(); }
             const blob = await response.blob();
@@ -759,6 +865,142 @@
                 item.appendChild(info);
                 item.appendChild(delBtn);
                 list.appendChild(item);
+            });
+        }
+
+        let riskChartInstance = null;
+        let entityChartInstance = null;
+
+        async function loadDashboard() {
+            const response = await fetch('/history', { credentials: 'same-origin' });
+            if (response.status === 401) { return requireLogin(); }
+            const history = await response.json();
+
+            renderDashStats(history);
+            renderRiskTrendChart(history);
+            renderEntityBreakdownChart(history);
+        }
+
+        function renderDashStats(history) {
+            const statsBox = document.getElementById('dashStats');
+            statsBox.innerHTML = '';
+
+            const total = history.length;
+            const scores = history.map(h => h.risk_score).filter(s => s !== undefined && s !== null);
+            const avgRisk = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            const highRiskCount = scores.filter(s => s >= 70).length;
+            const totalEntities = history.reduce((sum, h) => {
+                const e = h.entities || {};
+                return sum + Object.values(e).reduce((s, arr) => s + (Array.isArray(arr) ? arr.length : 0), 0);
+            }, 0);
+
+            const stats = [
+                [total, 'Files Analyzed'],
+                [avgRisk, 'Avg Risk Score'],
+                [highRiskCount, 'High Risk Files'],
+                [totalEntities, 'Entities Found']
+            ];
+
+            stats.forEach(([value, label]) => {
+                const box = document.createElement('div');
+                box.className = 'dash-stat-box';
+                const valEl = document.createElement('div');
+                valEl.className = 'dash-stat-value';
+                valEl.textContent = value;
+                const labelEl = document.createElement('div');
+                labelEl.className = 'dash-stat-label';
+                labelEl.textContent = label;
+                box.appendChild(valEl);
+                box.appendChild(labelEl);
+                statsBox.appendChild(box);
+            });
+        }
+
+        function renderRiskTrendChart(history) {
+            const canvas = document.getElementById('riskTrendChart');
+            const emptyMsg = document.getElementById('dashRiskEmpty');
+
+            if (history.length === 0) {
+                emptyMsg.style.display = 'block';
+                canvas.style.display = 'none';
+                return;
+            }
+            emptyMsg.style.display = 'none';
+            canvas.style.display = 'block';
+
+            // History arrives newest-first; reverse for a left-to-right timeline.
+            const ordered = [...history].reverse();
+            const labels = ordered.map(h => h.date || '');
+            const data = ordered.map(h => h.risk_score !== undefined ? h.risk_score : 0);
+
+            if (riskChartInstance) riskChartInstance.destroy();
+            riskChartInstance = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Risk Score',
+                        data: data,
+                        borderColor: '#5aa9e6',
+                        backgroundColor: 'rgba(90,169,230,0.15)',
+                        tension: 0.25,
+                        fill: true,
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { min: 0, max: 100, ticks: { color: '#8b8f96' }, grid: { color: '#3a3f47' } },
+                        x: { ticks: { color: '#8b8f96' }, grid: { color: '#3a3f47' } }
+                    },
+                    plugins: { legend: { labels: { color: '#e9e6dc' } } }
+                }
+            });
+        }
+
+        function renderEntityBreakdownChart(history) {
+            const canvas = document.getElementById('entityBreakdownChart');
+            const emptyMsg = document.getElementById('dashEntityEmpty');
+
+            const totals = { phones: 0, emails: 0, urls: 0, crypto_addresses: 0, ip_addresses: 0 };
+            history.forEach(h => {
+                const e = h.entities || {};
+                Object.keys(totals).forEach(key => {
+                    if (Array.isArray(e[key])) totals[key] += e[key].length;
+                });
+            });
+
+            const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+            if (grandTotal === 0) {
+                emptyMsg.style.display = 'block';
+                canvas.style.display = 'none';
+                return;
+            }
+            emptyMsg.style.display = 'none';
+            canvas.style.display = 'block';
+
+            const labelMap = { phones: 'Phones', emails: 'Emails', urls: 'URLs', crypto_addresses: 'Crypto', ip_addresses: 'IPs' };
+
+            if (entityChartInstance) entityChartInstance.destroy();
+            entityChartInstance = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(totals).map(k => labelMap[k]),
+                    datasets: [{
+                        label: 'Count',
+                        data: Object.values(totals),
+                        backgroundColor: '#c98a2c'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#8b8f96', precision: 0 }, grid: { color: '#3a3f47' } },
+                        x: { ticks: { color: '#8b8f96' }, grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
             });
         }
     </script>
