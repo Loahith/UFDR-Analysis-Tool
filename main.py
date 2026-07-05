@@ -7,6 +7,7 @@ from database import (
     create_user, verify_user,
     save_history_entry, load_history_entries, delete_history_entry,
     create_session, get_username_from_session, delete_session,
+    save_current_file, get_current_file,
 )
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -32,8 +33,6 @@ templates = Jinja2Templates(directory="templates")
 client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
 OCR_API_KEY = os.getenv("OCR_API_KEY", "K87430929088957")
 
-file_store = {}
-
 def get_current_user(session_token: str = Cookie(default=None)):
     """Every protected route depends on this instead of trusting a
     client-supplied 'username' field. The cookie is httponly, so JS on the
@@ -43,6 +42,28 @@ def get_current_user(session_token: str = Cookie(default=None)):
     if not username:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return username
+
+def format_as_paragraph(text):
+    """Fallback safety net for the /ask endpoint. The prompt already asks the
+    model for plain paragraphs, but models don't always comply - this strips
+    common markdown list/table/heading markers so the UI never has to render
+    stray bullets or pipes even if the model slips one in."""
+    lines = text.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Drop markdown heading markers (#, ##, ...)
+        stripped = re.sub(r'^#+\s*', '', stripped)
+        # Drop bullet markers (-, *, â€¢) and numbered list markers (1. 2))
+        stripped = re.sub(r'^[-*â€¢]\s+', '', stripped)
+        stripped = re.sub(r'^\d+[\.\)]\s+', '', stripped)
+        # Drop table row pipes, turning them into plain comma-separated text
+        if '|' in stripped:
+            stripped = ' '.join(p.strip() for p in stripped.split('|') if p.strip())
+        cleaned_lines.append(stripped)
+    return ' '.join(cleaned_lines)
 
 def compute_hashes(contents):
     return {
@@ -196,13 +217,14 @@ async def analyze_file(file: UploadFile = File(...), username: str = Depends(get
     clean_text = extract_text(contents, file_type, file_name)
     hashes = compute_hashes(contents)
 
-    file_store[username] = {
+    file_store_entry = {
         "name": file_name,
         "type": file_type,
         "content_preview": clean_text or "Binary/encoded file - analysis based on metadata",
         "md5": hashes["md5"],
         "sha256": hashes["sha256"],
     }
+    save_current_file(username, file_store_entry)
 
     if clean_text:
         prompt = f"""You are a forensic analyst. Analyze this file named '{file_name}' (type: {file_type}).
@@ -263,8 +285,9 @@ Be specific and professional. Base the risk score on file type and name - normal
     # so the UI shows the structured table instead of a duplicate JSON blob.
     display_analysis = re.sub(r'ENTITIES_JSON:\s*\{.*\}', '', result, flags=re.DOTALL).strip()
 
-    file_store[username]["analysis"] = display_analysis
-    file_store[username]["entities"] = entities
+    file_store_entry["analysis"] = display_analysis
+    file_store_entry["entities"] = entities
+    save_current_file(username, file_store_entry)
 
     entry = {
         "filename": file_name,
@@ -293,10 +316,9 @@ async def ask_question(request: Request, username: str = Depends(get_current_use
     data = await request.json()
     question = data.get("question", "")
 
-    if username not in file_store:
+    current = get_current_file(username)
+    if not current:
         return JSONResponse({"answer": "Please upload and analyze a file first!"})
-
-    current = file_store[username]
 
     prompt = f"""You are an AI assistant and forensic analyst. A file named '{current["name"]}' (type: {current["type"]}) was uploaded and analyzed.
 
@@ -313,7 +335,8 @@ Rules:
 - If the question is about content (skills, projects, data), answer from the file content or analysis
 - If content is not readable, use the forensic analysis to give the best possible answer
 - Always give a helpful, direct answer
-- Never say you cannot help"""
+- Never say you cannot help
+- Respond only in plain flowing paragraphs. Do not use bullet points, numbered lists, tables, headings, or any markdown formatting."""
 
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
@@ -322,6 +345,7 @@ Rules:
     )
 
     answer = response.choices[0].message.content
+    answer = format_as_paragraph(answer)
     return JSONResponse({"answer": answer})
 
 @app.get("/history")
