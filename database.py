@@ -14,6 +14,7 @@ db = client["ufdr_db"]
 users_collection = db["users"]
 history_collection = db["history"]
 sessions_collection = db["sessions"]
+file_cache_collection = db["file_cache"]
 
 MAX_HISTORY_PER_USER = 50
 SESSION_LIFETIME_HOURS = 24
@@ -76,7 +77,7 @@ def delete_history_entry(username, entry_id):
 
 def create_session(username):
     """Called on successful login. Returns an opaque token to set as a cookie.
-    The server â€” not the browser â€” is now the source of truth for identity."""
+    The server — not the browser — is now the source of truth for identity."""
     token = secrets.token_urlsafe(32)
     sessions_collection.insert_one({
         "token": token,
@@ -101,3 +102,21 @@ def get_username_from_session(token):
 def delete_session(token):
     if token:
         sessions_collection.delete_one({"token": token})
+
+def save_current_file(username, data):
+    """Replaces the in-memory file_store dict. Stored in Mongo so that any
+    worker process can serve the follow-up /ask request, not just the one
+    that happened to handle /analyze."""
+    doc = dict(data)
+    doc["username"] = username
+    file_cache_collection.replace_one(
+        {"username": username}, doc, upsert=True
+    )
+
+def get_current_file(username):
+    """Returns the last analyzed file's data for this user, or None."""
+    doc = file_cache_collection.find_one({"username": username})
+    if doc:
+        doc.pop("_id", None)
+        doc.pop("username", None)
+    return doc
