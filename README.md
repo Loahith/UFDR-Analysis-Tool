@@ -2,9 +2,6 @@
 
 An AI-powered **Unified Forensic Data Report (UFDR)** analysis tool built for students and cybersecurity professionals to analyze files and generate forensic reports.
 
-## 🚀 Live Demo
-🌐 [UFDR ANALYSIS TOOL](https://ufdr-analysis-tool-996p.onrender.com)
-
 ## ✨ Features
 - 🔐 **User Authentication** — Secure Login & Register (MongoDB)
 - 🔬 **AI File Analysis** — Analyze any file type (PDF, DOCX, XLSX, CSV, Images, TXT)
